@@ -7,6 +7,30 @@
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
+    <script>
+      let isMarkerVisible = false;
+
+      AFRAME.registerComponent('markerhandler', {
+        init: function () {
+          this.el.addEventListener('markerFound', () => {
+            isMarkerVisible = true;
+            document.getElementById('marker-warning').style.display = 'none';
+            document.getElementById('next-btn-text').classList.remove('btn-disabled');
+            document.getElementById('start-cpr-btn').classList.remove('btn-disabled');
+          });
+
+          this.el.addEventListener('markerLost', () => {
+            isMarkerVisible = false;
+            if (document.getElementById('ar-ui').style.display === 'block') {
+              document.getElementById('marker-warning').style.display = 'block';
+            }
+            document.getElementById('next-btn-text').classList.add('btn-disabled');
+            document.getElementById('start-cpr-btn').classList.add('btn-disabled');
+          });
+        }
+      });
+    </script>
+
     <style>
       :root {
         --primary-gradient: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
@@ -16,10 +40,35 @@
         --glass: rgba(255, 255, 255, 0.1);
       }
 
-      body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #000; overflow: hidden; }
+      /* FIX: Lock the body to viewport dimensions for Android */
+      body { 
+        margin: 0; 
+        font-family: 'Segoe UI', sans-serif; 
+        background: #000; 
+        overflow: hidden; 
+        position: fixed; 
+        width: 100vw; 
+        height: 100vh; 
+      }
+
+      #marker-warning {
+        position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+        background: rgba(255, 75, 43, 0.95); color: white; padding: 12px 25px;
+        border-radius: 15px; font-weight: bold; z-index: 9999999; display: none;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.5); text-align: center; width: 80%; max-width: 350px;
+      }
+
+      .btn-disabled {
+        opacity: 0.4 !important;
+        cursor: not-allowed !important;
+        background: #555 !important;
+        color: #aaa !important;
+        box-shadow: none !important;
+      }
 
       .emergency-btn {
-        position: fixed; top: 20px; right: 20px; z-index: 5000;
+        position: fixed; top: 20px; right: 20px; 
+        z-index: 999999; 
         background: var(--emergency-red); color: white; border: none;
         padding: 12px 20px; border-radius: 12px; font-weight: bold;
         box-shadow: 0 0 15px rgba(255, 75, 43, 0.6); cursor: pointer;
@@ -33,8 +82,9 @@
       }
 
       .overlay-page {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: var(--primary-gradient); z-index: 3000;
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: var(--primary-gradient); 
+        z-index: 999999; 
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         color: white; text-align: center; transition: 0.8s ease-in-out;
       }
@@ -43,6 +93,11 @@
         background: var(--glass); backdrop-filter: blur(20px);
         border-radius: 35px; padding: 30px; width: 85%; max-width: 450px;
         border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+        position: relative;
+      }
+
+      .uni-logo {
+        position: absolute; top: 20px; left: 20px; width: 50px; height: auto;
       }
 
       .how-to-use {
@@ -58,8 +113,9 @@
       }
 
       #ar-ui {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        z-index: 1000; display: none; pointer-events: none;
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        z-index: 99999; 
+        display: none; pointer-events: none;
       }
 
       .progress-container {
@@ -73,7 +129,9 @@
       }
 
       .instruction-panel {
-        position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+        position: absolute; 
+        bottom: 10vh; /* FIX: Use 10vh to safely clear Android Navigation Bars */
+        left: 50%; transform: translateX(-50%);
         width: 90%; pointer-events: auto;
       }
 
@@ -87,7 +145,7 @@
       .btn-next {
         flex: 3; padding: 20px; border-radius: 50px; border: none;
         color: white; font-weight: bold; background: var(--emergency-red);
-        font-size: 1.2rem; cursor: pointer;
+        font-size: 1.2rem; cursor: pointer; touch-action: manipulation; transition: 0.3s;
       }
 
       #start-cpr-btn {
@@ -96,7 +154,7 @@
 
       .btn-reset {
         flex: 1; background: #333; color: #fff; border-radius: 50px; border: 1px solid #555;
-        font-weight: bold; cursor: pointer;
+        font-weight: bold; cursor: pointer; touch-action: manipulation;
       }
 
       #cpr-counter {
@@ -111,9 +169,12 @@
   <body>
 
     <button id="sos-btn" class="emergency-btn" onclick="window.location.href='tel:112'">CALL 112 📞</button>
+    
+    <div id="marker-warning">⚠️ Marker Not Found! Please aim the camera at the HIRO marker.</div>
 
     <div id="landing-page" class="overlay-page">
       <div class="glass-card">
+        <img src="HSA.png" class="uni-logo" alt="Logo">
         <h1>CPR AR MISSION</h1>
         <p>Interactive Training Simulation</p>
         
@@ -146,8 +207,8 @@
         </div>
         <div class="controls">
           <button class="btn-reset" onclick="location.reload()">RESET</button>
-          <button id="start-cpr-btn" class="btn-next" onclick="startCPR()">START COMPRESSIONS</button>
-          <button id="next-btn-text" class="btn-next" onclick="nextStep()">CONTINUE →</button>
+          <button id="start-cpr-btn" class="btn-next btn-disabled" onclick="startCPR()">START COMPRESSIONS</button>
+          <button id="next-btn-text" class="btn-next btn-disabled" onclick="nextStep()">CONTINUE →</button>
         </div>
       </div>
     </div>
@@ -157,7 +218,7 @@
         <img id="cpr-hands" src="hands.png">
       </a-assets>
 
-      <a-marker preset="hiro">
+      <a-marker preset="hiro" markerhandler>
         
         <a-entity id="group1">
           <a-cone color="#00ff88" radius-bottom="0.2" height="0.6" position="-2.0 1.5 0" rotation="180 0 0" animation="property: position; to: -2.0 1.7 0; dir: alternate; dur: 800; loop: true"></a-cone>
@@ -212,9 +273,9 @@
         "Check surroundings for any immediate danger to you or the victim.",
         "Check responsiveness: Shake shoulders and shout 'Are you okay?'.",
         "Perform head-tilt, chin-lift to clear the airway.",
-        "Check breathing: Look, listen, and feel for normal breaths for 10s.",
+        "Check breathing: Look, listen, and feel for normal breaths for 10s. Call emergency.",
         "Perform 30 chest compressions. Follow the rhythm of the hands and beeps.",
-        "Deliver 2 rescue breaths to complete the cycle."
+        "Give 2 rescue breaths. Repeat 30:2 cycle until help arrives or the person recovers."
       ];
 
       function beep(freq, duration) {
@@ -233,10 +294,16 @@
           document.getElementById('landing-page').style.display = 'none';
           document.getElementById('ar-ui').style.display = 'block';
           document.getElementById('sos-btn').style.display = 'block';
+          
+          if (!isMarkerVisible) {
+            document.getElementById('marker-warning').style.display = 'block';
+          }
         }, 800);
       }
 
       function nextStep() {
+        if (!isMarkerVisible) return;
+
         clearInterval(timer);
         document.getElementById('cpr-counter').style.display = 'none';
         
@@ -264,6 +331,8 @@
       }
 
       function startCPR() {
+        if (!isMarkerVisible) return;
+
         count = 0;
         const handImg = document.getElementById('hand-image');
         document.getElementById('cpr-counter').style.display = 'block';
@@ -282,6 +351,10 @@
             handImg.setAttribute('animation', 'enabled: false');
             clearInterval(timer);
             document.getElementById('next-btn-text').style.display = 'block';
+            
+            if (!isMarkerVisible) {
+                document.getElementById('next-btn-text').classList.add('btn-disabled');
+            }
           }
         }, 545);
       }
@@ -289,6 +362,7 @@
       function showFinishPage() {
         document.getElementById('ar-ui').style.display = 'none';
         document.getElementById('sos-btn').style.display = 'none';
+        document.getElementById('marker-warning').style.display = 'none';
         const fp = document.getElementById('finish-page');
         fp.style.display = 'flex';
         setTimeout(() => { fp.style.opacity = '1'; }, 100);
